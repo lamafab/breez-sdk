@@ -1,6 +1,7 @@
 use lightning_invoice::RawInvoice;
+use serde_json::json;
 
-use crate::{LspInformation, NodeState, INVOICE_PAYMENT_FEE_EXPIRY_SECONDS, ensure_sdk, ReceivePaymentRequest, error::{SdkError, SdkResult}, parse_short_channel_id, ChannelState, Peer, parse_invoice, RouteHint, RouteHintHop, invoice::add_lsp_routing_hints, OpeningFeeParams, LNInvoice};
+use crate::{LspInformation, NodeState, INVOICE_PAYMENT_FEE_EXPIRY_SECONDS, ensure_sdk, ReceivePaymentRequest, error::{SdkError, SdkResult}, parse_short_channel_id, ChannelState, Peer, parse_invoice, RouteHint, RouteHintHop, invoice::add_lsp_routing_hints, OpeningFeeParams, LNInvoice, grpc::PaymentInformation};
 
 pub struct NodeApiRequestBuilder;
 
@@ -307,4 +308,19 @@ pub struct LspRegisterPaymentPayload {
     pub incoming_amount_msat: i64,
     pub outgoing_amount_msat: i64,
     pub opening_fee_params: OpeningFeeParams,
+}
+
+impl LspRegisterPaymentPayload {
+	pub fn into_payment_information(self, api_key_hash: &str) -> PaymentInformation {
+		PaymentInformation {
+			payment_hash: self.payment_hash,
+			payment_secret: self.payment_secret,
+			destination: self.destination,
+			incoming_amount_msat: self.incoming_amount_msat,
+			outgoing_amount_msat: self.outgoing_amount_msat,
+			tag: json!({ "apiKeyHash": api_key_hash }).to_string(),
+			// TODO: Should this be Option in the first place?
+			opening_fee_params: Some(self.opening_fee_params.into()),
+		}
+	}
 }

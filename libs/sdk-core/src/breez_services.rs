@@ -1975,13 +1975,13 @@ impl Receiver for PaymentReceiver {
 
         // Add routing hint if a new channel has to be opened.
         let PostLspRoutingHintContext {
-            new_invoice_with_hint,
+            new_invoice,
             next_builder
         } = next_builder.invoice(&invoice)?;
 
         // If a new invoice with lsp hint or changed amount was generated, we
         // create a new invoice with the node API.
-        if let Some(raw_invoice_with_hint) = new_invoice_with_hint {
+        if let Some(raw_invoice_with_hint) = new_invoice {
             invoice = self.node_api.sign_invoice(raw_invoice_with_hint)?;
             info!("Signed invoice with hint = {}", invoice);
         }

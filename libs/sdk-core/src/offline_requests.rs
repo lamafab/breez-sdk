@@ -141,7 +141,7 @@ pub struct LspRoutingHintBuilder {
 
 impl LspRoutingHintBuilder {
 	pub fn invoice(self, invoice: &str) -> SdkResult<PostLspRoutingHintContext> {
-        let mut parsed_invoice = parse_invoice(invoice)?;
+        let parsed_invoice = parse_invoice(invoice)?;
 
 		// TODO: Extra checks between `parsed_invoice` and `self.*`?
 
@@ -178,14 +178,14 @@ impl LspRoutingHintBuilder {
 		let lsp_pubkey = self.lsp_info.lsp_pubkey.clone();
 
         // We only create a new invoice if we need to add the lsp hint or change the amount
-		let mut new_invoice = None;
+		let mut new_invoice_with_hint = None;
         if lsp_hint.is_some() || self.req_amount_msat != self.destination_invoice_amount_msat {
             // create the large amount invoice
             let raw_invoice_with_hint =
                 add_lsp_routing_hints(invoice.to_string(), lsp_hint, self.req_amount_msat)?;
 
             info!("Routing hint added");
-			new_invoice = Some(raw_invoice_with_hint);
+			new_invoice_with_hint = Some(raw_invoice_with_hint);
 			// TODO: NodeAPI::create_invoice vs NodeAPI::signed_invoice?
 			// TODO:
             //info!("Signed invoice with hint = {}", signed_invoice_with_hint);
@@ -202,16 +202,14 @@ impl LspRoutingHintBuilder {
 		};
 
 		Ok(PostLspRoutingHintContext {
-			new_invoice,
+			new_invoice_with_hint,
 			next_builder,
 		})
 	}
 }
 
 pub struct PostLspRoutingHintContext {
-	// We only create a new invoice if we need to add the lsp hint or change the amount
-	// TODO: Expand.
-	pub new_invoice: Option<RawInvoice>,
+	pub new_invoice_with_hint: Option<RawInvoice>,
 	pub next_builder: FinalizedInvoiceBuilder,
 }
 

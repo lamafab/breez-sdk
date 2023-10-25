@@ -2039,6 +2039,7 @@ impl Receiver for PaymentReceiver {
                     },
                 )
                 .await?;
+
             info!("Payment registered");
         }
 

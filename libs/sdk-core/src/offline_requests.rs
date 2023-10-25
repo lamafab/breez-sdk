@@ -22,7 +22,7 @@ impl NodeApiRequestBuilder {
 pub struct PaymentReceiverBuilder;
 
 impl PaymentReceiverBuilder {
-    pub fn new(
+    pub fn prepare_invoice(
         req: ReceivePaymentRequest,
         lsp_info: LspInformation,
         node_state: NodeState,
@@ -112,10 +112,10 @@ impl PaymentReceiverBuilder {
         let next_builder = LspRoutingHintBuilder {
             req_amount_msat: req.amount_msat,
             lsp_info,
-            channel_opening_fee_params,
             open_channel_needed,
             short_channel_id,
             destination_invoice_amount_msat,
+            channel_opening_fee_params,
             channel_fees_msat,
         };
 
@@ -146,15 +146,15 @@ pub struct CreateInvoice {
 pub struct LspRoutingHintBuilder {
     req_amount_msat: u64,
     lsp_info: LspInformation,
-    channel_opening_fee_params: Option<OpeningFeeParams>,
     open_channel_needed: bool,
     short_channel_id: u64,
     destination_invoice_amount_msat: u64,
+    channel_opening_fee_params: Option<OpeningFeeParams>,
     channel_fees_msat: Option<u64>,
 }
 
 impl LspRoutingHintBuilder {
-    pub fn invoice(self, invoice: &str) -> SdkResult<PostLspRoutingHintContext> {
+    pub fn check_routing_hint(self, invoice: &str) -> SdkResult<PostLspRoutingHintContext> {
         let parsed_invoice = parse_invoice(invoice)?;
 
         // TODO: Extra checks between `parsed_invoice` and `self.*`?
@@ -207,8 +207,8 @@ impl LspRoutingHintBuilder {
             lsp_id,
             lsp_pubkey,
             open_channel_needed: self.open_channel_needed,
-            channel_opening_fee_params: self.channel_opening_fee_params,
             destination_invoice_amount_msat: self.destination_invoice_amount_msat,
+            channel_opening_fee_params: self.channel_opening_fee_params,
             channel_fees_msat: self.channel_fees_msat,
         };
 
@@ -253,7 +253,7 @@ impl FinalizedInvoiceBuilder {
                 });
             }
 
-            register_payment = Some(LspRegisterPaymentPayload {
+            register_payment = Some(LspRegisterPaymentParams {
                 lsp_id: self.lsp_id,
                 lsp_pubkey: self.lsp_pubkey,
                 payment_hash: hex::decode(parsed_invoice.payment_hash.clone()).map_err(|e| {
@@ -285,15 +285,16 @@ impl FinalizedInvoiceBuilder {
 }
 
 pub struct FinalizedInvoiceContext {
-    pub ln_invoice: LNInvoice,
+	// TODO: Needed? Not duplicate value from `ln_invoice`?
     pub req_amount_msat: u64,
+    pub ln_invoice: LNInvoice,
     pub opening_fee_params: OpeningFeeParams,
     // TODO: When is this None?
     pub opening_fee_msat: Option<u64>,
-    pub register_payment: Option<LspRegisterPaymentPayload>,
+    pub register_payment: Option<LspRegisterPaymentParams>,
 }
 
-pub struct LspRegisterPaymentPayload {
+pub struct LspRegisterPaymentParams {
     pub lsp_id: String,
     pub lsp_pubkey: Vec<u8>,
     pub payment_hash: Vec<u8>,
@@ -304,7 +305,7 @@ pub struct LspRegisterPaymentPayload {
     pub opening_fee_params: OpeningFeeParams,
 }
 
-impl LspRegisterPaymentPayload {
+impl LspRegisterPaymentParams {
     pub fn into_payment_information(self, api_key_hash: &str) -> PaymentInformation {
         PaymentInformation {
             payment_hash: self.payment_hash,

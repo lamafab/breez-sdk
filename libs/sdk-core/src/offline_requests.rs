@@ -1,6 +1,6 @@
 use lightning_invoice::RawInvoice;
 
-use crate::{LspInformation, NodeState, INVOICE_PAYMENT_FEE_EXPIRY_SECONDS, ensure_sdk, ReceivePaymentRequest, error::{SdkError, SdkResult}, parse_short_channel_id, ChannelState, Peer, parse_invoice, RouteHint, RouteHintHop, invoice::add_lsp_routing_hints};
+use crate::{LspInformation, NodeState, INVOICE_PAYMENT_FEE_EXPIRY_SECONDS, ensure_sdk, ReceivePaymentRequest, error::{SdkError, SdkResult}, parse_short_channel_id, ChannelState, Peer, parse_invoice, RouteHint, RouteHintHop, invoice::add_lsp_routing_hints, OpeningFeeParams, LNInvoice};
 
 pub struct NodeApiRequestBuilder;
 
@@ -157,6 +157,7 @@ impl PostInvoiceBuilder {
 
             info!("Routing hint added");
 			new_invoice = Some(raw_invoice_with_hint);
+			// TODO: NodeAPI::create_invoice vs NodeAPI::signed_invoice?
 			// TODO:
             //info!("Signed invoice with hint = {}", signed_invoice_with_hint);
         }
@@ -171,4 +172,96 @@ pub struct UpdatedInvoiceContext {
 	// We only create a new invoice if we need to add the lsp hint or change the amount
 	// TODO: Expand.
 	new_invoice: Option<RawInvoice>,
+}
+
+pub struct FinalizedInvoiceBuilder {
+	req: ReceivePaymentRequest,
+	lsp_info: LspInformation,
+	open_channel_needed: bool,
+	channel_opening_fee_params: Option<OpeningFeeParams>,
+	destination_invoice_amount_msat: u64,
+	// TODO: When is this None?
+	channel_fees_msat: Option<u64>
+}
+
+impl FinalizedInvoiceBuilder {
+	pub fn finalize(self, invoice: &str) -> SdkResult<FinalizedInvoiceContext> {
+        let mut parsed_invoice = parse_invoice(invoice)?;
+
+        // register the payment at the lsp if needed
+		let mut register_payment = None;
+        if self.open_channel_needed {
+            info!("Registering payment with LSP");
+
+			// TODO: Should this be checked before?
+            if self.channel_opening_fee_params.is_none() {
+                return Err(SdkError::ReceivePaymentFailed {
+                    err: "We need to open a channel, but no channel opening fee params found"
+                        .into(),
+                });
+            }
+
+			register_payment = Some(LspRegisterPaymentPayload {
+				lsp_id: self.lsp_info.id.clone(),
+				lsp_pubkey: self.lsp_info.lsp_pubkey.clone(),
+				payment_hash: hex::decode(parsed_invoice.payment_hash.clone()).map_err(
+					|e| SdkError::ReceivePaymentFailed {
+						err: format!("Failed to decode hex payment hash: {e}"),
+					},
+				)?,
+				payment_secret: parsed_invoice.payment_secret.clone(),
+				destination: hex::decode(parsed_invoice.payee_pubkey.clone()).map_err(
+					|e| SdkError::ReceivePaymentFailed {
+						err: format!("Failed to decode hex payee pubkey: {e}"),
+					},
+				)?,
+				incoming_amount_msat: self.req.amount_msat as i64,
+				outgoing_amount_msat: self.destination_invoice_amount_msat as i64,
+				// TODO: Should probably not be Option in the first place.
+				opening_fee_params: self.channel_opening_fee_params.unwrap().into(),
+			});
+
+			// TODO:
+            //info!("Payment registered");
+        }
+
+		// TODO:
+		/*
+        // Make sure we save the large amount so we can deduce the fees later.
+        self.persister
+            .insert_open_channel_payment_info(&parsed_invoice.payment_hash, req.amount_msat)?;
+        // return the signed, converted invoice with hints
+        Ok(ReceivePaymentResponse {
+            ln_invoice: parsed_invoice,
+            opening_fee_params: channel_opening_fee_params,
+            opening_fee_msat: channel_fees_msat,
+        })
+		*/
+		
+		Ok(FinalizedInvoiceContext {
+			ln_invoice: parsed_invoice,
+			opening_fee_params: self.channel_opening_fee_params.unwrap(),
+			opening_fee_msat: self.channel_fees_msat,
+			register_payment,
+		})
+	}
+}
+
+pub struct FinalizedInvoiceContext {
+	pub ln_invoice: LNInvoice,
+	pub opening_fee_params: OpeningFeeParams,
+	// TODO: When is this None?
+	pub opening_fee_msat: Option<u64>,
+	pub register_payment: Option<LspRegisterPaymentPayload>
+}
+
+pub struct LspRegisterPaymentPayload {
+	pub lsp_id: String,
+	pub lsp_pubkey: Vec<u8>,
+    pub payment_hash: Vec<u8>,
+    pub payment_secret: Vec<u8>,
+    pub destination: Vec<u8>,
+    pub incoming_amount_msat: i64,
+    pub outgoing_amount_msat: i64,
+    pub opening_fee_params: OpeningFeeParams,
 }

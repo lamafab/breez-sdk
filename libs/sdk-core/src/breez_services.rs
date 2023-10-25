@@ -1879,7 +1879,7 @@ pub(crate) struct PaymentReceiver {
 }
 
 // TODO:
-use crate::offline_requests::{
+use crate::offline::payment_receiver::{
     FinalizedInvoiceBuilder, FinalizedInvoiceContext, LspRoutingHintBuilder,
     PaymentReceiverBuilder, PostLspRoutingHintContext, PostPaymentReceiverContext,
 };

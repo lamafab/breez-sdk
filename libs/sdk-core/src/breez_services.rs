@@ -1879,7 +1879,10 @@ pub(crate) struct PaymentReceiver {
 }
 
 // TODO:
-use crate::offline_requests::{PaymentReceiverBuilder, PostLspRoutingHintContext, PostPaymentReceiverContext, LspRoutingHintBuilder, FinalizedInvoiceBuilder, FinalizedInvoiceContext};
+use crate::offline_requests::{
+    FinalizedInvoiceBuilder, FinalizedInvoiceContext, LspRoutingHintBuilder,
+    PaymentReceiverBuilder, PostLspRoutingHintContext, PostPaymentReceiverContext,
+};
 
 #[tonic::async_trait]
 impl Receiver for PaymentReceiver {
@@ -2040,8 +2043,10 @@ impl Receiver for PaymentReceiver {
         }
 
         // Make sure we save the large amount so we can deduce the fees later.
-        self.persister
-            .insert_open_channel_payment_info(&finalized.ln_invoice.payment_hash, finalized.req_amount_msat)?;
+        self.persister.insert_open_channel_payment_info(
+            &finalized.ln_invoice.payment_hash,
+            finalized.req_amount_msat,
+        )?;
 
         // return the signed, converted invoice with hints
         Ok(ReceivePaymentResponse {

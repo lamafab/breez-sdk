@@ -187,9 +187,6 @@ impl LspRoutingHintBuilder {
 
             info!("Routing hint added");
 			new_invoice_with_hint = Some(raw_invoice_with_hint);
-			// TODO: NodeAPI::create_invoice vs NodeAPI::signed_invoice?
-			// TODO:
-            //info!("Signed invoice with hint = {}", signed_invoice_with_hint);
         }
 
 		let next_builder = FinalizedInvoiceBuilder {
@@ -262,23 +259,7 @@ impl FinalizedInvoiceBuilder {
 				// TODO: Should probably not be Option in the first place.
 				opening_fee_params: self.channel_opening_fee_params.clone().unwrap().into(),
 			});
-
-			// TODO:
-            //info!("Payment registered");
         }
-
-		// TODO:
-		/*
-        // Make sure we save the large amount so we can deduce the fees later.
-        self.persister
-            .insert_open_channel_payment_info(&parsed_invoice.payment_hash, req.amount_msat)?;
-        // return the signed, converted invoice with hints
-        Ok(ReceivePaymentResponse {
-            ln_invoice: parsed_invoice,
-            opening_fee_params: channel_opening_fee_params,
-            opening_fee_msat: channel_fees_msat,
-        })
-		*/
 		
 		Ok(FinalizedInvoiceContext {
 			ln_invoice: parsed_invoice,

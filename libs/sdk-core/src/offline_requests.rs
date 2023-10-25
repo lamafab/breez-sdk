@@ -98,9 +98,11 @@ impl PaymentReceiverBuilder {
 		let next_builder = LspRoutingHintBuilder {
 			req_amount_msat: req.amount_msat,
 			lsp_info,
+			channel_opening_fee_params,
 			open_channel_needed,
 			short_channel_id,
 			destination_invoice_amount_msat,
+			channel_fees_msat,
 		};
 
 		// TODO:
@@ -130,13 +132,15 @@ pub struct CreateInvoice {
 pub struct LspRoutingHintBuilder {
 	req_amount_msat: u64,
 	lsp_info: LspInformation,
+	channel_opening_fee_params: Option<OpeningFeeParams>,
 	open_channel_needed: bool,
 	short_channel_id: u64,
 	destination_invoice_amount_msat: u64,
+	channel_fees_msat: Option<u64>
 }
 
 impl LspRoutingHintBuilder {
-	pub fn invoice(self, invoice: &str) -> SdkResult<UpdatedInvoiceContext> {
+	pub fn invoice(self, invoice: &str) -> SdkResult<PostLspRoutingHintContext> {
         let mut parsed_invoice = parse_invoice(invoice)?;
 
 		// TODO: Extra checks between `parsed_invoice` and `self.*`?
@@ -170,6 +174,9 @@ impl LspRoutingHintBuilder {
             });
         }
 
+		let lsp_id = self.lsp_info.id.clone();
+		let lsp_pubkey = self.lsp_info.lsp_pubkey.clone();
+
         // We only create a new invoice if we need to add the lsp hint or change the amount
 		let mut new_invoice = None;
         if lsp_hint.is_some() || self.req_amount_msat != self.destination_invoice_amount_msat {
@@ -184,21 +191,34 @@ impl LspRoutingHintBuilder {
             //info!("Signed invoice with hint = {}", signed_invoice_with_hint);
         }
 
-		Ok(UpdatedInvoiceContext {
+		let next_builder = FinalizedInvoiceBuilder {
+			req_amount_msat: self.req_amount_msat,
+			lsp_id,
+			lsp_pubkey,
+			open_channel_needed: self.open_channel_needed,
+			channel_opening_fee_params: self.channel_opening_fee_params,
+			destination_invoice_amount_msat: self.destination_invoice_amount_msat,
+			channel_fees_msat: self.channel_fees_msat, 
+		};
+
+		Ok(PostLspRoutingHintContext {
 			new_invoice,
+			next_builder,
 		})
 	}
 }
 
-pub struct UpdatedInvoiceContext {
+pub struct PostLspRoutingHintContext {
 	// We only create a new invoice if we need to add the lsp hint or change the amount
 	// TODO: Expand.
 	new_invoice: Option<RawInvoice>,
+	next_builder: FinalizedInvoiceBuilder,
 }
 
 pub struct FinalizedInvoiceBuilder {
-	req: ReceivePaymentRequest,
-	lsp_info: LspInformation,
+	req_amount_msat: u64,
+	lsp_id: String,
+	lsp_pubkey: Vec<u8>,
 	open_channel_needed: bool,
 	channel_opening_fee_params: Option<OpeningFeeParams>,
 	destination_invoice_amount_msat: u64,
@@ -224,8 +244,8 @@ impl FinalizedInvoiceBuilder {
             }
 
 			register_payment = Some(LspRegisterPaymentPayload {
-				lsp_id: self.lsp_info.id.clone(),
-				lsp_pubkey: self.lsp_info.lsp_pubkey.clone(),
+				lsp_id: self.lsp_id,
+				lsp_pubkey: self.lsp_pubkey,
 				payment_hash: hex::decode(parsed_invoice.payment_hash.clone()).map_err(
 					|e| SdkError::ReceivePaymentFailed {
 						err: format!("Failed to decode hex payment hash: {e}"),
@@ -237,7 +257,7 @@ impl FinalizedInvoiceBuilder {
 						err: format!("Failed to decode hex payee pubkey: {e}"),
 					},
 				)?,
-				incoming_amount_msat: self.req.amount_msat as i64,
+				incoming_amount_msat: self.req_amount_msat as i64,
 				outgoing_amount_msat: self.destination_invoice_amount_msat as i64,
 				// TODO: Should probably not be Option in the first place.
 				opening_fee_params: self.channel_opening_fee_params.clone().unwrap().into(),

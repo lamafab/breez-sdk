@@ -211,8 +211,8 @@ impl LspRoutingHintBuilder {
 pub struct PostLspRoutingHintContext {
 	// We only create a new invoice if we need to add the lsp hint or change the amount
 	// TODO: Expand.
-	new_invoice: Option<RawInvoice>,
-	next_builder: FinalizedInvoiceBuilder,
+	pub new_invoice: Option<RawInvoice>,
+	pub next_builder: FinalizedInvoiceBuilder,
 }
 
 pub struct FinalizedInvoiceBuilder {
@@ -228,7 +228,8 @@ pub struct FinalizedInvoiceBuilder {
 
 impl FinalizedInvoiceBuilder {
 	pub fn finalize(self, invoice: &str) -> SdkResult<FinalizedInvoiceContext> {
-        let mut parsed_invoice = parse_invoice(invoice)?;
+		// TODO: Do extra checks with `new_invoice` generated previously?
+        let parsed_invoice = parse_invoice(invoice)?;
 
         // register the payment at the lsp if needed
 		let mut register_payment = None;
@@ -282,6 +283,7 @@ impl FinalizedInvoiceBuilder {
 		
 		Ok(FinalizedInvoiceContext {
 			ln_invoice: parsed_invoice,
+			req_amount_msat: self.req_amount_msat,
 			opening_fee_params: self.channel_opening_fee_params.unwrap(),
 			opening_fee_msat: self.channel_fees_msat,
 			register_payment,
@@ -291,6 +293,7 @@ impl FinalizedInvoiceBuilder {
 
 pub struct FinalizedInvoiceContext {
 	pub ln_invoice: LNInvoice,
+	pub req_amount_msat: u64,
 	pub opening_fee_params: OpeningFeeParams,
 	// TODO: When is this None?
 	pub opening_fee_msat: Option<u64>,

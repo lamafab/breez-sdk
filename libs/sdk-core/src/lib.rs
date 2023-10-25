@@ -180,6 +180,7 @@ mod lsps2;
 mod models;
 mod moonpay;
 mod node_api;
+mod offline_requests;
 mod persist;
 mod swap_in;
 mod swap_out;

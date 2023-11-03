@@ -1878,12 +1878,6 @@ pub(crate) struct PaymentReceiver {
     persister: Arc<SqliteStorage>,
 }
 
-// TODO:
-use crate::offline::payment_receiver::{
-    FinalizedInvoiceBuilder, FinalizedInvoiceContext, LspRoutingHintBuilder,
-    PaymentReceiverBuilder, PostLspRoutingHintContext, PostPaymentReceiverContext,
-};
-
 #[tonic::async_trait]
 impl Receiver for PaymentReceiver {
     async fn receive_payment(
@@ -1961,32 +1955,49 @@ impl Receiver for PaymentReceiver {
             }
         }
 
-        // Send the invoice to the node API.
         info!("Creating invoice on NodeAPI");
-        let mut invoice = self
+        let invoice = &self
             .node_api
             .create_invoice(
-                para.amount_msat,
-                para.description,
-                para.preimage,
-                para.use_description_hash,
-                para.expiry,
-                para.cltv,
+                destination_invoice_amount_msat,
+                req.description,
+                req.preimage,
+                req.use_description_hash,
+                Some(expiry),
+                Some(req.cltv.unwrap_or(144)),
             )
             .await?;
         info!("Invoice created {}", invoice);
 
-        // Add routing hint if a new channel has to be opened.
-        let PostLspRoutingHintContext {
-            new_invoice,
-            next_builder
-        } = next_builder.invoice(&invoice)?;
+        let mut parsed_invoice = parse_invoice(invoice)?;
 
-        // If a new invoice with lsp hint or changed amount was generated, we
-        // create a new invoice with the node API.
-        if let Some(raw_invoice_with_hint) = new_invoice {
-            invoice = self.node_api.sign_invoice(raw_invoice_with_hint)?;
-            info!("Signed invoice with hint = {}", invoice);
+        // check if the lsp hint already exists
+        info!("Existing routing hints {:?}", parsed_invoice.routing_hints);
+        info!("lsp info pubkey = {:?}", lsp_info.pubkey.clone());
+        let has_lsp_hint = parsed_invoice.routing_hints.iter().any(|h| {
+            h.hops
+                .iter()
+                .any(|h| h.src_node_id == lsp_info.pubkey.clone())
+        });
+
+        // We only add routing hint if we need to open a channel
+        // or if the invoice doesn't have any routing hints that points to the lsp
+        let mut lsp_hint: Option<RouteHint> = None;
+        if !has_lsp_hint || open_channel_needed {
+            let lsp_hop = RouteHintHop {
+                src_node_id: lsp_info.pubkey,
+                short_channel_id,
+                fees_base_msat: lsp_info.base_fee_msat as u32,
+                fees_proportional_millionths: (lsp_info.fee_rate * 1000000.0) as u32,
+                cltv_expiry_delta: lsp_info.time_lock_delta as u64,
+                htlc_minimum_msat: Some(lsp_info.min_htlc_msat as u64),
+                htlc_maximum_msat: None,
+            };
+
+            info!("Adding LSP hop as routing hint: {:?}", lsp_hop);
+            lsp_hint = Some(RouteHint {
+                hops: vec![lsp_hop],
+            });
         }
 
         // We only create a new invoice if we need to add the lsp hint or change the amount
@@ -2017,8 +2028,6 @@ impl Receiver for PaymentReceiver {
                 });
             }
 
-        // We register the payment at the lsp if needed.
-        if let Some(x) = finalized.register_payment {
             let api_key = self.config.api_key.clone().unwrap_or_default();
             let api_key_hash = sha256::Hash::hash(api_key.as_bytes()).to_hex();
 
@@ -2039,22 +2048,17 @@ impl Receiver for PaymentReceiver {
                     },
                 )
                 .await?;
-
             info!("Payment registered");
         }
 
         // Make sure we save the large amount so we can deduce the fees later.
-        self.persister.insert_open_channel_payment_info(
-            &finalized.ln_invoice.payment_hash,
-            finalized.req_amount_msat,
-        )?;
-
+        self.persister
+            .insert_open_channel_payment_info(&parsed_invoice.payment_hash, req.amount_msat)?;
         // return the signed, converted invoice with hints
         Ok(ReceivePaymentResponse {
-            ln_invoice: finalized.ln_invoice,
-            // TODO: Should this always be Option?
-            opening_fee_params: Some(finalized.opening_fee_params),
-            opening_fee_msat: finalized.opening_fee_msat,
+            ln_invoice: parsed_invoice,
+            opening_fee_params: channel_opening_fee_params,
+            opening_fee_msat: channel_fees_msat,
         })
     }
 }

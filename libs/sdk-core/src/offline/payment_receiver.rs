@@ -1,13 +1,14 @@
+use anyhow::anyhow;
 use lightning_invoice::RawInvoice;
 use serde_json::json;
 
 use crate::{
     ensure_sdk,
-    error::{SdkError, SdkResult},
+    error::{ReceivePaymentError, SdkError, SdkResult},
     grpc::PaymentInformation,
     invoice::add_lsp_routing_hints,
     parse_invoice, parse_short_channel_id, ChannelState, LNInvoice, LspInformation, NodeState,
-    OpeningFeeParams, Peer, ReceivePaymentRequest, RouteHint, RouteHintHop,
+    OpeningFeeParams, Peer, ReceivePaymentRequest, ReceivePaymentResponse, RouteHint, RouteHintHop,
     INVOICE_PAYMENT_FEE_EXPIRY_SECONDS,
 };
 
@@ -27,12 +28,12 @@ impl PaymentReceiverBuilder {
         lsp_info: LspInformation,
         node_state: NodeState,
         peers: Option<Vec<Peer>>,
-    ) -> SdkResult<PostPaymentReceiverContext> {
+    ) -> Result<(CreateInvoice, LspRoutingHintBuilder), ReceivePaymentError> {
         let expiry = req.expiry.unwrap_or(INVOICE_PAYMENT_FEE_EXPIRY_SECONDS);
 
         ensure_sdk!(
             req.amount_msat > 0,
-            SdkError::ReceivePaymentFailed {
+            ReceivePaymentError::InvalidAmount {
                 err: "Receive amount must be more than 0".into()
             }
         );
@@ -61,7 +62,7 @@ impl PaymentReceiverBuilder {
                     ofp.proportional, ofp.min_msat, channel_fees_msat);
 
                 if req.amount_msat < channel_fees_msat + 1000 {
-                    return Err(SdkError::ReceivePaymentFailed {
+                    return Err(ReceivePaymentError::InvalidAmount {
                         err: format!(
                             "requestPayment: Amount should be more than the minimum fees {channel_fees_msat} msat, but is {} msat",
                             req.amount_msat
@@ -81,9 +82,7 @@ impl PaymentReceiverBuilder {
                         .channels
                         .iter()
                         .find(|&c| c.state == ChannelState::Opened)
-                        .ok_or_else(|| SdkError::ReceivePaymentFailed {
-                            err: "No open channel found".into(),
-                        })?;
+                        .ok_or_else(|| anyhow!("No open channel found"))?;
                     let hint = active_channel
                         .clone()
                         .alias_remote
@@ -122,10 +121,7 @@ impl PaymentReceiverBuilder {
         // TODO:
         //info!("Invoice created {}", invoice);
 
-        Ok(PostPaymentReceiverContext {
-            create_invoice,
-            next_builder,
-        })
+        Ok((create_invoice, next_builder))
     }
 }
 
@@ -236,7 +232,7 @@ pub struct FinalizedInvoiceBuilder {
 }
 
 impl FinalizedInvoiceBuilder {
-    pub fn finalize(self, invoice: &str) -> SdkResult<FinalizedInvoiceContext> {
+    pub fn finalize(self, invoice: &str) -> Result<FinalizedInvoiceContext, ReceivePaymentError> {
         // TODO: Do extra checks with `new_invoice` generated previously?
         let parsed_invoice = parse_invoice(invoice)?;
 
@@ -247,7 +243,7 @@ impl FinalizedInvoiceBuilder {
 
             // TODO: Should this be checked before?
             if self.channel_opening_fee_params.is_none() {
-                return Err(SdkError::ReceivePaymentFailed {
+                return Err(ReceivePaymentError::Generic {
                     err: "We need to open a channel, but no channel opening fee params found"
                         .into(),
                 });
@@ -256,17 +252,11 @@ impl FinalizedInvoiceBuilder {
             register_payment = Some(LspRegisterPaymentParams {
                 lsp_id: self.lsp_id,
                 lsp_pubkey: self.lsp_pubkey,
-                payment_hash: hex::decode(parsed_invoice.payment_hash.clone()).map_err(|e| {
-                    SdkError::ReceivePaymentFailed {
-                        err: format!("Failed to decode hex payment hash: {e}"),
-                    }
-                })?,
+                payment_hash: hex::decode(parsed_invoice.payment_hash.clone())
+                    .map_err(|e| anyhow!("Failed to decode hex payment hash: {e}"))?,
                 payment_secret: parsed_invoice.payment_secret.clone(),
-                destination: hex::decode(parsed_invoice.payee_pubkey.clone()).map_err(|e| {
-                    SdkError::ReceivePaymentFailed {
-                        err: format!("Failed to decode hex payee pubkey: {e}"),
-                    }
-                })?,
+                destination: hex::decode(parsed_invoice.payee_pubkey.clone())
+                    .map_err(|e| anyhow!("Failed to decode hex payee pubkey: {e}"))?,
                 incoming_amount_msat: self.req_amount_msat as i64,
                 outgoing_amount_msat: self.destination_invoice_amount_msat as i64,
                 // TODO: Should probably not be Option in the first place.
@@ -285,7 +275,7 @@ impl FinalizedInvoiceBuilder {
 }
 
 pub struct FinalizedInvoiceContext {
-	// TODO: Needed? Not duplicate value from `ln_invoice`?
+    // TODO: Needed? Not duplicate value from `ln_invoice`?
     pub req_amount_msat: u64,
     pub ln_invoice: LNInvoice,
     pub opening_fee_params: OpeningFeeParams,

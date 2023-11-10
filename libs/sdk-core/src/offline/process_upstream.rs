@@ -21,7 +21,8 @@ pub fn pull_changed(
 	since_timestamp: u64,
 	node_payments: cln::ListpaysResponse,
 ) -> NodeResult<SyncResponse> {
-	// TODO: Greenlight::fech_channels_and_balances does some extra procesing with the `balance_changed` flag.
+	// TODO: Greenlight::fech_channels_and_balances does some extra procesing
+	// with the `balance_changed` flag.
 
 	let all_channels: Vec<cln::ListpeersPeersChannels> = node_peers
 		.peers
@@ -52,6 +53,7 @@ pub fn pull_changed(
 		.iter()
 		.cloned()
 		.map(Channel::from)
+		// Append forgotten, closed channels
 		.chain(forgotten_closed_channels.into_iter())
 		.collect();
 
@@ -120,7 +122,11 @@ pub fn pull_changed(
 		.collect();
 
 	// Calculate payment limits and inbound liquidity
+
+	// The max payble amount we have on all channels combined.
+	// TODO: Why do we need this? Isn't this just the same as `channels_balance`?
 	let mut max_payable = 0;
+	// The max receivable we have on a any single channel.
 	let mut max_receivable_single_channel = 0;
 	for channel in &opened_channels {
 		max_payable += channel
@@ -135,10 +141,12 @@ pub fn pull_changed(
 			.map(|amount| amount.msat)
 			.unwrap_or_default();
 
+		// Increase the max receivable, if appropriate.
 		max_receivable_single_channel = max_receivable_single_channel.max(receivable_amount);
 	}
 
 	let max_allowed_to_receive_msats = MAX_INBOUND_LIQUIDITY_MSAT.saturating_sub(channels_balance);
+	// TODO: Not quite clear what this does?
 	let max_allowed_reserve_msats = channels_balance - max_payable.min(channels_balance);
 
 	let node_pubkey = hex::encode(node_info.id);

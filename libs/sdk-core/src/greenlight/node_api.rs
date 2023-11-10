@@ -691,9 +691,10 @@ impl NodeAPI for Greenlight {
         let utxos = self.utxos(funds).await?;
 
         // calculate payment limits and inbound liquidity
+        // TODO: Isn't this just the same as `channels_balance`?
         let mut max_payable: u64 = 0;
         let mut max_receivable_single_channel: u64 = 0;
-        // TODO: This never fails
+        // TODO: This never fails, so just use `for_each`.
         opened_channels.iter().try_for_each(|c| -> Result<()> {
             max_payable += c
                 .spendable_msat

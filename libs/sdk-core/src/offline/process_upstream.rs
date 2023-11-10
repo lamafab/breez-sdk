@@ -1,7 +1,7 @@
-use gl_client::pb::cln::{self, ListpeersPeers};
+use gl_client::pb::cln::{self, ListpeersPeers, listinvoices_invoices::ListinvoicesInvoicesStatus};
 use cln::listpeers_peers_channels::ListpeersPeersChannelsState as ChannelState;
 
-use crate::{NodeState, Channel, node_api::NodeResult, UnspentTransactionOutput};
+use crate::{NodeState, Channel, node_api::NodeResult, UnspentTransactionOutput, Payment, SyncResponse};
 
 // TODO: Import from `crate::greenlight` instead?
 const MAX_PAYMENT_AMOUNT_MSAT: u64 = 4294967000;
@@ -17,7 +17,12 @@ pub fn pull_changed(
 	node_funds: cln::ListfundsResponse,
 	node_closed_channels: cln::ListclosedchannelsResponse,
 	node_peers: cln::ListpeersResponse,
-) -> NodeResult<NodeState> {
+	node_invoices: cln::ListinvoicesResponse,
+	since_timestamp: u64,
+	node_payments: cln::ListpaysResponse,
+) -> NodeResult<SyncResponse> {
+	// TODO: Greenlight::fech_channels_and_balances does some extra procesing with the `balance_changed` flag.
+
 	let all_channels: Vec<cln::ListpeersPeersChannels> = node_peers
 		.peers
 		.iter()
@@ -48,6 +53,30 @@ pub fn pull_changed(
 		.cloned()
 		.map(Channel::from)
 		.chain(forgotten_closed_channels.into_iter())
+		.collect();
+
+	// Process invoices
+	let received_transactions: Vec<Payment> = node_invoices
+		.invoices
+		.into_iter()
+		.filter(|invoice| {
+			invoice.paid_at.unwrap_or_default() > since_timestamp
+				&& invoice.status() == ListinvoicesInvoicesStatus::Paid
+		})
+		.map(TryInto::try_into)
+		.collect::<NodeResult<_>>()?;
+
+	let outbound_transactions: Vec<Payment> = node_payments
+		.pays
+		.into_iter()
+		.filter(|pays| pays.created_at > since_timestamp)
+		.map(TryInto::try_into)
+		.collect::<NodeResult<_>>()?;
+
+	// All transactions (received & outbound)
+	let transactions: Vec<Payment> = received_transactions
+		.into_iter()
+		.chain(outbound_transactions.into_iter())
 		.collect();
 
 	// Calculate channel balance
@@ -128,7 +157,9 @@ pub fn pull_changed(
 		inbound_liquidity_msats: max_receivable_single_channel,
 	};
 
-	// TODO: Return SyncReponse
-
-	Ok(node_state)
+	Ok(SyncResponse {
+		node_state,
+		payments: transactions,
+		channels: all_channel_models,
+	})
 }

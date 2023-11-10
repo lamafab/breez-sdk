@@ -1,7 +1,11 @@
 use gl_client::pb::cln::{self, ListpeersPeers};
 use cln::listpeers_peers_channels::ListpeersPeersChannelsState as ChannelState;
 
-use crate::{NodeState, Channel, node_api::NodeResult};
+use crate::{NodeState, Channel, node_api::NodeResult, UnspentTransactionOutput};
+
+// TODO: Import from `crate::greenlight` instead?
+const MAX_PAYMENT_AMOUNT_MSAT: u64 = 4294967000;
+const MAX_INBOUND_LIQUIDITY_MSAT: u64 = 4000000000;
 
 /// 
 /// * node_info: response returned by `/cln.Node/Getinfo`.
@@ -14,17 +18,10 @@ pub fn pull_changed(
 	node_closed_channels: cln::ListclosedchannelsResponse,
 	node_peers: cln::ListpeersResponse,
 ) -> NodeResult<NodeState> {
-
-	let connected_peers: Vec<String> = node_peers
-		.peers
-		.iter()
-		.filter(|peer| peer.connected)
-		.map(|peer| hex::encode(peer.id))
-		.collect();
-
 	let all_channels: Vec<cln::ListpeersPeersChannels> = node_peers
 		.peers
 		.iter()
+		.cloned()
 		.map(|peer| peer.channels)
 		.flatten()
 		.collect();
@@ -32,25 +29,35 @@ pub fn pull_changed(
 	let opened_channels: Vec<cln::ListpeersPeersChannels> = all_channels
 		.iter()
 		.filter(|channel| channel.state() == ChannelState::ChanneldNormal)
+		.cloned()
 		.collect();
 
-	let channels_balance: u64 = opened_channels
-		.iter()
-		.map(|channel| Channel::from(channel))
-		.map(|channel| channel.spendable_msat)
-		.sum();
-
-	let forgotten_closed_channels: NodeResult<Vec<Channel>> = node_closed_channels
+	let forgotten_closed_channels: Vec<Channel> = node_closed_channels
 		.closedchannels
-		.iter()
+		.into_iter()
 		.filter(|closed| {
 			all_channels
 				.iter()
-				.all(|any| any.funding_txid != Some(closed.funding_txid))
+				.all(|any| any.funding_txid.as_ref() != Some(&closed.funding_txid))
 		})
-		.map(|closed| Channel::try_from)
-		.collect()?;
+		.map(TryInto::try_into)
+		.collect::<NodeResult<_>>()?;
 
+	let all_channel_models: Vec<Channel> = all_channels
+		.iter()
+		.cloned()
+		.map(Channel::from)
+		.chain(forgotten_closed_channels.into_iter())
+		.collect();
+
+	// Calculate channel balance
+	let channels_balance: u64 = opened_channels
+		.iter()
+		.map(|channel| Channel::from(channel.clone()))
+		.map(|channel| channel.spendable_msat)
+		.sum();
+
+	// Calculate onchain balance
 	let onchain_balance = node_funds
 		.outputs
 		.iter()
@@ -58,9 +65,52 @@ pub fn pull_changed(
 			if outputs.reserved {
 				total
 			} else {
-				total + outputs.amount_msat.unwrap_or_default().msat
+				total + outputs.amount_msat.as_ref().map(|amount| amount.msat).unwrap_or_default()
 			}
 		});
+
+	// List of UTXOs
+	let utxos: Vec<UnspentTransactionOutput> = node_funds
+		.outputs
+		.iter()
+		.map(|output| UnspentTransactionOutput {
+			txid: output.txid.clone(),
+			outnum: output.output,
+			amount_millisatoshi: output.amount_msat.as_ref().map(|amount| amount.msat).unwrap_or_default(),
+			address: output.address.clone().unwrap_or_default(),
+			reserved: output.reserved,
+		})
+		.collect();
+
+	// List of connected peers
+	let connected_peers: Vec<String> = node_peers
+		.peers
+		.iter()
+		.filter(|peer| peer.connected)
+		.map(|peer| hex::encode(&peer.id))
+		.collect();
+
+	// Calculate payment limits and inbound liquidity
+	let mut max_payable = 0;
+	let mut max_receivable_single_channel = 0;
+	for channel in &opened_channels {
+		max_payable += channel
+			.spendable_msat
+			.as_ref()
+			.map(|amount| amount.msat)
+			.unwrap_or_default();
+
+		let receivable_amount = channel
+			.receivable_msat
+			.as_ref()
+			.map(|amount| amount.msat)
+			.unwrap_or_default();
+
+		max_receivable_single_channel = max_receivable_single_channel.max(receivable_amount);
+	}
+
+	let max_allowed_to_receive_msats = MAX_INBOUND_LIQUIDITY_MSAT.saturating_sub(channels_balance);
+	let max_allowed_reserve_msats = channels_balance - max_payable.min(channels_balance);
 
 	let node_pubkey = hex::encode(node_info.id);
 
@@ -69,14 +119,16 @@ pub fn pull_changed(
 		block_height: node_info.blockheight,
 		channels_balance_msat: channels_balance,
 		onchain_balance_msat: onchain_balance,
-		utxos: Vec<UnspentTransactionOutput>,
-		max_payable_msat: u64,
-		max_receivable_msat: u64,
-		max_single_payment_amount_msat: u64,
-		max_chan_reserve_msats: u64,
-		connected_peers: Vec<String>,
-		inbound_liquidity_msats: u64,
+		utxos,
+		max_payable_msat: max_payable,
+		max_receivable_msat: max_allowed_to_receive_msats,
+		max_single_payment_amount_msat: MAX_PAYMENT_AMOUNT_MSAT,
+		max_chan_reserve_msats: max_allowed_reserve_msats,
+		connected_peers: connected_peers,
+		inbound_liquidity_msats: max_receivable_single_channel,
 	};
 
-	todo!()
+	// TODO: Return SyncReponse
+
+	Ok(node_state)
 }

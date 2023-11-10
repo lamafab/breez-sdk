@@ -693,6 +693,7 @@ impl NodeAPI for Greenlight {
         // calculate payment limits and inbound liquidity
         let mut max_payable: u64 = 0;
         let mut max_receivable_single_channel: u64 = 0;
+        // TODO: This never fails
         opened_channels.iter().try_for_each(|c| -> Result<()> {
             max_payable += c
                 .spendable_msat

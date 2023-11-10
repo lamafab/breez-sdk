@@ -312,9 +312,13 @@ impl Greenlight {
         persister: Arc<SqliteStorage>,
         balance_changed: bool,
     ) -> NodeResult<(
+        // All channels
         Vec<cln::ListpeersPeersChannels>,
+        // Opened channels
         Vec<cln::ListpeersPeersChannels>,
+        // Connected peers
         Vec<String>,
+        // Channels balance.
         u64,
     )> {
         let (mut all_channels, mut opened_channels, mut connected_peers, mut channels_balance) =
@@ -347,9 +351,13 @@ impl Greenlight {
     async fn fetch_channels_and_balance(
         mut cln_client: node::ClnClient,
     ) -> NodeResult<(
+        // All channels
         Vec<cln::ListpeersPeersChannels>,
+        // Opened channels
         Vec<cln::ListpeersPeersChannels>,
+        // Connected peers
         Vec<String>,
+        // Channels balance.
         u64,
     )> {
         // list all peers

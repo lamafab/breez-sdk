@@ -839,6 +839,8 @@ impl BreezServices {
             .pull_changed(since_timestamp, balance_changed)
             .await?;
 
+        println!("{}", serde_json::to_string_pretty(new_data).unwrap());
+
         debug!(
             "pull changed time={:?} {:?}",
             since_timestamp, new_data.payments

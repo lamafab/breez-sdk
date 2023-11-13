@@ -1,7 +1,7 @@
 use gl_client::pb::cln::{self, ListpeersPeers, listinvoices_invoices::ListinvoicesInvoicesStatus};
 use cln::listpeers_peers_channels::ListpeersPeersChannelsState as ChannelState;
 
-use crate::{NodeState, Channel, node_api::NodeResult, UnspentTransactionOutput, Payment, SyncResponse};
+use crate::{NodeState, Channel, node_api::NodeResult, UnspentTransactionOutput, Payment, SyncResponse, grpc::SubscribeNotificationsRequest};
 
 // TODO: Import from `crate::greenlight` instead?
 const MAX_PAYMENT_AMOUNT_MSAT: u64 = 4294967000;
@@ -12,6 +12,9 @@ const MAX_INBOUND_LIQUIDITY_MSAT: u64 = 4000000000;
 /// * node_funds: response returned by `/cln.Node/ListFunds`.
 /// * node_closed_channels: response returned by `/cln.Node/ListClosedChannels`.
 /// * node_peers: reponse returned by `/cln.Node/ListPeers`.
+/// * node_invoices: reponse returned by `/cln.Node/ListInvoices`.
+/// * since_timestamp: TODO.
+/// * node_payments: reponse returned by `/cln.Node/ListPays`.
 pub fn pull_changed(
 	node_info: cln::GetinfoResponse,
 	node_funds: cln::ListfundsResponse,

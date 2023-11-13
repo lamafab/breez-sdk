@@ -1,0 +1,140 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.airgap.breez.service";
+option java_outer_classname = "AirgapProto";
+
+package airgap;
+
+message SyncResponse {
+    message Node_state {
+        string id = 1;
+        uint32 block_height = 2;
+        uint64 channels_balance_msat = 3;
+        uint64 onchain_balance_msat = 4;
+        repeated UnspentTransactionOutput utxos = 5;
+        uint64 max_payable_msat = 6;
+        uint64 max_receivable_msat = 7;
+        uint64 max_single_payment_amount_msat = 8;
+        uint64 max_chan_reserve_msats = 9;
+        repeated string connected_peers = 10;
+        uint64 inbound_liquidity_msats = 11;
+    }
+
+    message UnspentTransactionOutput {
+      bytes txid = 1;
+      uint32 outnum = 2;
+      uint64 amount_millisatoshi = 3;
+      string address = 4;
+      bool reserved= 5;
+    }
+
+    message Payment {
+      enum PaymentType {
+        SENT = 0;
+        RECEIVED = 1;
+        CLOSED_CHANNEL = 2;
+      }
+
+      enum PaymentStatus {
+        PENDING = 0;
+        COMPLETE = 1;
+        FAILED = 2;
+      }
+
+	  message LnPaymentDetails {
+		message SwapInfo {
+			enum SwapStatus {
+				INITIAL = 0;
+				EXPIRED = 1;
+			}
+
+			message OpeningFeeParams {
+				uint64 min_msat = 1;
+				uint32 proportional = 2;
+				string valid_until = 3;
+				uint32 max_idle_time = 4;
+				uint32 max_client_to_self_delay = 5;
+				string promise = 6;
+			}
+
+			string bitcoin_address = 1;
+			int64 created_at = 2;
+			int64 lock_height = 3;
+			bytes payment_hash = 4;
+			bytes preimage = 5;
+			bytes private_key = 6;
+			bytes public_key = 7;
+			bytes swapper_public_key = 8;
+			bytes script = 9;
+			string bolt11 = 10;
+			uint64 paid_sats = 11;
+			uint64 confirmed_sats = 12;
+			uint64 unconfirmed_sats = 13;
+			SwapStatus status = 14;
+			string refund_tx_ids = 15;
+			string unconfirmed_tx_ids = 16;
+			string confirmed_tx_ids = 17;
+			int64 min_allowed_deposit = 18;
+			int64 max_allowed_deposit = 19;
+			string last_redeem_error = 20;
+			OpeningFeeParams channel_opening_fees = 21;
+		}
+
+		string payment_hash = 1;
+		string label = 2;
+		string destination_pubkey = 3;
+		string payment_preimage = 4;
+		bool keysend = 5;
+		string bolt11 = 6;
+		string lnurl_success_action = 7;
+		string ln_address = 8;
+		string lnurl_metadata = 9;
+		string lnurl_withdraw_endpoint = 10;
+		SwapInfo swap_info = 11;
+	  }
+
+	  message ClosedChannelPaymentDetails {
+		enum ChannelState {
+			PENDING_OPEN = 0;
+			OPENED = 1;
+			PENDING_CLOSE = 2;
+			CLOSED = 3;
+		}
+
+		string short_channel_id = 1;
+		ChannelState state = 2;
+		string funding_txid = 3;
+		string closing_txid = 4;
+	  }
+
+      string id = 1;
+      PaymentType payment_type = 2;
+      int64 payment_time = 3;
+      uint64 amount_msat = 4;
+      uint64 fee_msat = 5;
+      PaymentStatus status = 6;
+      string description = 7;
+      oneof details {
+		LnPaymentDetails ln = 8;
+		ClosedChannelPaymentDetails closed_channel = 9;
+	  }
+    }
+
+    message Channel {
+        string funding_txid = 1;
+        string short_channel_id = 2;
+        string state = 3;
+        uint64 spendable_msat = 4;
+        uint64 receivable_msat = 5;
+        uint64 closed_at = 6;
+        uint32 funding_outnum = 7;
+        string alias_local = 8;
+        string alias_remote = 9;
+        string closing_txid = 10;
+    }
+
+    Node_state node_state = 1;
+    repeated Payment payments = 2;
+    repeated Channel channels = 3;
+}

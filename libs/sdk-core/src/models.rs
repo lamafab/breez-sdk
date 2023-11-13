@@ -596,6 +596,7 @@ pub struct NodeState {
 }
 
 /// Internal response to a [NodeAPI::pull_changed] call
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct SyncResponse {
     pub node_state: NodeState,
     pub payments: Vec<crate::models::Payment>,
@@ -1017,7 +1018,7 @@ impl OpeningFeeParamsMenu {
 }
 
 /// Lightning channel
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Channel {
     pub funding_txid: String,
     pub short_channel_id: String,

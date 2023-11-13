@@ -102,7 +102,6 @@ pub fn prepare_invoice(
 }
 
 pub struct CheckedLspHintsContext {
-    // TODO: Remove, signing should happen in `check_lsp_hints`
     checked_invoice: Option<RawInvoice>,
     payment_info: Option<PaymentInfo>,
 }
@@ -163,8 +162,6 @@ fn check_lsp_hints(
             req.amount_msat,
         )?);
 
-        // TODO: Signing should happen here.
-
         /* TODO
         info!("Routing hint added");
         let signed_invoice_with_hint = self.node_api.sign_invoice(raw_invoice_with_hint)?;
@@ -195,6 +192,30 @@ fn check_lsp_hints(
             outgoing_amount_msat: ctx.destination_invoice_amount_msat as i64,
             opening_fee_params: ctx.channel_opening_fee_params.clone().map(Into::into),
         });
+
+		/* TODO
+		let api_key = self.config.api_key.clone().unwrap_or_default();
+		let api_key_hash = sha256::Hash::hash(api_key.as_bytes()).to_hex();
+
+		self.lsp
+			.register_payment(
+				lsp_info.id.clone(),
+				lsp_info.lsp_pubkey.clone(),
+				PaymentInformation {
+					payment_hash: hex::decode(parsed_invoice.payment_hash.clone())
+						.map_err(|e| anyhow!("Failed to decode hex payment hash: {e}"))?,
+					payment_secret: parsed_invoice.payment_secret.clone(),
+					destination: hex::decode(parsed_invoice.payee_pubkey.clone())
+						.map_err(|e| anyhow!("Failed to decode hex payee pubkey: {e}"))?,
+					incoming_amount_msat: req.amount_msat as i64,
+					outgoing_amount_msat: destination_invoice_amount_msat as i64,
+					tag: json!({ "apiKeyHash": api_key_hash }).to_string(),
+					opening_fee_params: channel_opening_fee_params.clone().map(Into::into),
+				},
+			)
+			.await?;
+		info!("Payment registered");
+		*/
     }
 
     let ctx = CheckedLspHintsContext {

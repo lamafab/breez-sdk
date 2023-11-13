@@ -2,8 +2,7 @@ use cln::listpeers_peers_channels::ListpeersPeersChannelsState as ChannelState;
 use gl_client::pb::cln::{self, listinvoices_invoices::ListinvoicesInvoicesStatus, ListpeersPeers};
 
 use crate::{
-    grpc::SubscribeNotificationsRequest, node_api::NodeResult, Channel, NodeState, Payment,
-    SyncResponse, UnspentTransactionOutput,
+    node_api::NodeResult, Channel, NodeState, Payment, SyncResponse, UnspentTransactionOutput,
 };
 
 // TODO: Import from `crate::greenlight` instead?

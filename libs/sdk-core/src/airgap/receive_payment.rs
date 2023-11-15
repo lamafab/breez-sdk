@@ -1,6 +1,6 @@
 use crate::{
     ensure_sdk, error::ReceivePaymentError, invoice::add_lsp_routing_hints, parse_invoice,
-    parse_short_channel_id, ChannelState, LspInformation, NodeState, OpeningFeeParams, Peer,
+    parse_short_channel_id, ChannelState, LspInformation, OpeningFeeParams, Peer,
     ReceivePaymentRequest, RouteHint, RouteHintHop,
 };
 use anyhow::anyhow;
@@ -18,10 +18,10 @@ pub struct PreparedInvoiceContext {
 }
 
 pub fn prepare_invoice(
-    lsp_info: LspInformation,
-    node_state: NodeState,
-    node_peers: cln::ListpeersResponse,
     req: ReceivePaymentRequest,
+    lsp_info: &LspInformation,
+    node_peers: cln::ListpeersResponse,
+    node_state_inbound_liquidity_msats: u64,
 ) -> Result<PreparedInvoiceContext, ReceivePaymentError> {
     let expiry = req.expiry.unwrap_or(INVOICE_PAYMENT_FEE_EXPIRY_SECONDS);
 
@@ -39,7 +39,7 @@ pub fn prepare_invoice(
     let mut channel_fees_msat = None;
 
     // check if we need to open channel
-    let open_channel_needed = node_state.inbound_liquidity_msats < req.amount_msat;
+    let open_channel_needed = node_state_inbound_liquidity_msats < req.amount_msat;
     if open_channel_needed {
         info!("We need to open a channel");
 
@@ -109,10 +109,10 @@ pub struct PaymentInfo {
 }
 
 pub fn check_lsp_hints(
-    ctx: PreparedInvoiceContext,
     invoice: String,
-    lsp_info: LspInformation,
-    amount_msat: u64,
+    req: &ReceivePaymentRequest,
+    ctx: &PreparedInvoiceContext,
+    lsp_info: &LspInformation,
 ) -> Result<Option<RawInvoice>, ReceivePaymentError> {
     let parsed_invoice = parse_invoice(&invoice)?;
 
@@ -130,7 +130,7 @@ pub fn check_lsp_hints(
     let mut lsp_hint: Option<RouteHint> = None;
     if !has_lsp_hint || ctx.open_channel_needed {
         let lsp_hop = RouteHintHop {
-            src_node_id: lsp_info.pubkey,
+            src_node_id: lsp_info.pubkey.clone(),
             short_channel_id: ctx.short_channel_id,
             fees_base_msat: lsp_info.base_fee_msat as u32,
             fees_proportional_millionths: (lsp_info.fee_rate * 1000000.0) as u32,
@@ -146,12 +146,12 @@ pub fn check_lsp_hints(
     }
 
     // We only create a new invoice if we need to add the lsp hint or change the amount
-    if lsp_hint.is_some() || amount_msat != ctx.destination_invoice_amount_msat {
+    if lsp_hint.is_some() || req.amount_msat != ctx.destination_invoice_amount_msat {
         // create the large amount invoice
         Ok(Some(add_lsp_routing_hints(
             invoice.clone(),
             lsp_hint,
-            amount_msat,
+            req.amount_msat,
         )?))
     } else {
         Ok(None)
@@ -159,9 +159,9 @@ pub fn check_lsp_hints(
 }
 
 pub fn check_payment_registration(
-    ctx: PreparedInvoiceContext,
     invoice: String,
-    req: ReceivePaymentRequest,
+    req: &ReceivePaymentRequest,
+    ctx: &PreparedInvoiceContext,
 ) -> Result<Option<PaymentInfo>, ReceivePaymentError> {
     let parsed_invoice = parse_invoice(&invoice)?;
 

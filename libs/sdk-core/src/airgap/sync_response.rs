@@ -1,9 +1,8 @@
-use cln::listpeers_peers_channels::ListpeersPeersChannelsState as ChannelState;
-use gl_client::pb::cln::{self, listinvoices_invoices::ListinvoicesInvoicesStatus, ListpeersPeers};
-
 use crate::{
     node_api::NodeResult, Channel, NodeState, Payment, SyncResponse, UnspentTransactionOutput,
 };
+use cln::listpeers_peers_channels::ListpeersPeersChannelsState as ChannelState;
+use gl_client::pb::cln::{self, listinvoices_invoices::ListinvoicesInvoicesStatus};
 
 // TODO: Import from `crate::greenlight` instead?
 const MAX_PAYMENT_AMOUNT_MSAT: u64 = 4294967000;

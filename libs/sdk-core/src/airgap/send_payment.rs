@@ -1,6 +1,6 @@
 use crate::{error::SendPaymentError, parse_invoice, LNInvoice, SendPaymentRequest};
 
-pub fn send_payment(req: SendPaymentRequest) -> Result<LNInvoice, SendPaymentError> {
+pub fn prepare_payment_request(req: SendPaymentRequest) -> Result<LNInvoice, SendPaymentError> {
     let parsed_invoice = parse_invoice(req.bolt11.as_str())?;
     let invoice_amount_msat = parsed_invoice.amount_msat.unwrap_or_default();
     let provided_amount_msat = req.amount_msat.unwrap_or_default();

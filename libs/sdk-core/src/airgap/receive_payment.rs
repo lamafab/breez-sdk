@@ -1,21 +1,20 @@
 use crate::{
-    ensure_sdk, error::ReceivePaymentError, grpc::PaymentInformation,
-    invoice::add_lsp_routing_hints, parse_invoice, parse_short_channel_id, ChannelState,
-    LspInformation, NodeState, OpeningFeeParams, Peer, ReceivePaymentRequest,
-    ReceivePaymentResponse, RouteHint, RouteHintHop,
+    ensure_sdk, error::ReceivePaymentError, invoice::add_lsp_routing_hints, parse_invoice,
+    parse_short_channel_id, ChannelState, LspInformation, NodeState, OpeningFeeParams, Peer,
+    ReceivePaymentRequest, RouteHint, RouteHintHop,
 };
 use anyhow::anyhow;
-use gl_client::pb::cln::{self, listinvoices_invoices::ListinvoicesInvoicesStatus, ListpeersPeers};
+use gl_client::pb::cln;
 use lightning_invoice::RawInvoice;
-use serde_json::json;
 
 pub const INVOICE_PAYMENT_FEE_EXPIRY_SECONDS: u32 = 60 * 60; // 60 minutes
 
 pub struct PreparedInvoiceContext {
-    short_channel_id: u64,
-    destination_invoice_amount_msat: u64,
-    channel_opening_fee_params: Option<OpeningFeeParams>,
-    open_channel_needed: bool,
+    pub short_channel_id: u64,
+    pub destination_invoice_amount_msat: u64,
+    pub channel_opening_fee_params: Option<OpeningFeeParams>,
+    pub open_channel_needed: bool,
+    pub channel_fees_msat: Option<u64>,
 }
 
 pub fn prepare_invoice(
@@ -23,7 +22,7 @@ pub fn prepare_invoice(
     node_state: NodeState,
     node_peers: cln::ListpeersResponse,
     req: ReceivePaymentRequest,
-) -> Result<ReceivePaymentResponse, ReceivePaymentError> {
+) -> Result<PreparedInvoiceContext, ReceivePaymentError> {
     let expiry = req.expiry.unwrap_or(INVOICE_PAYMENT_FEE_EXPIRY_SECONDS);
 
     ensure_sdk!(
@@ -91,37 +90,31 @@ pub fn prepare_invoice(
         }
     }
 
-    let ctx = PreparedInvoiceContext {
+    Ok(PreparedInvoiceContext {
         short_channel_id,
         destination_invoice_amount_msat,
         channel_opening_fee_params,
         open_channel_needed,
-    };
-
-    todo!()
-}
-
-pub struct CheckedLspHintsContext {
-    checked_invoice: Option<RawInvoice>,
-    payment_info: Option<PaymentInfo>,
+        channel_fees_msat,
+    })
 }
 
 pub struct PaymentInfo {
-    payment_hash: Vec<u8>,
-    payment_secret: Vec<u8>,
-    destination: Vec<u8>,
-    incoming_amount_msat: i64,
-    outgoing_amount_msat: i64,
-    opening_fee_params: Option<OpeningFeeParams>,
+    pub payment_hash: Vec<u8>,
+    pub payment_secret: Vec<u8>,
+    pub destination: Vec<u8>,
+    pub incoming_amount_msat: i64,
+    pub outgoing_amount_msat: i64,
+    pub opening_fee_params: Option<OpeningFeeParams>,
 }
 
-fn check_lsp_hints(
+pub fn check_lsp_hints(
     ctx: PreparedInvoiceContext,
     invoice: String,
     lsp_info: LspInformation,
-    req: ReceivePaymentRequest,
-) -> Result<ReceivePaymentResponse, ReceivePaymentError> {
-    let mut parsed_invoice = parse_invoice(&invoice)?;
+    amount_msat: u64,
+) -> Result<Option<RawInvoice>, ReceivePaymentError> {
+    let parsed_invoice = parse_invoice(&invoice)?;
 
     // check if the lsp hint already exists
     info!("Existing routing hints {:?}", parsed_invoice.routing_hints);
@@ -153,26 +146,26 @@ fn check_lsp_hints(
     }
 
     // We only create a new invoice if we need to add the lsp hint or change the amount
-    let mut raw_invoice_with_hint = None;
-    if lsp_hint.is_some() || req.amount_msat != ctx.destination_invoice_amount_msat {
+    if lsp_hint.is_some() || amount_msat != ctx.destination_invoice_amount_msat {
         // create the large amount invoice
-        raw_invoice_with_hint = Some(add_lsp_routing_hints(
+        Ok(Some(add_lsp_routing_hints(
             invoice.clone(),
             lsp_hint,
-            req.amount_msat,
-        )?);
-
-        /* TODO
-        info!("Routing hint added");
-        let signed_invoice_with_hint = self.node_api.sign_invoice(raw_invoice_with_hint)?;
-        info!("Signed invoice with hint = {}", signed_invoice_with_hint);
-
-        parsed_invoice = parse_invoice(&signed_invoice_with_hint)?;
-        */
+            amount_msat,
+        )?))
+    } else {
+        Ok(None)
     }
+}
+
+pub fn check_payment_registration(
+    ctx: PreparedInvoiceContext,
+    invoice: String,
+    req: ReceivePaymentRequest,
+) -> Result<Option<PaymentInfo>, ReceivePaymentError> {
+    let parsed_invoice = parse_invoice(&invoice)?;
 
     // register the payment at the lsp if needed
-    let mut payment_info = None;
     if ctx.open_channel_needed {
         info!("Registering payment with LSP");
 
@@ -182,7 +175,7 @@ fn check_lsp_hints(
             });
         }
 
-        payment_info = Some(PaymentInfo {
+        Ok(Some(PaymentInfo {
             payment_hash: hex::decode(parsed_invoice.payment_hash.clone())
                 .map_err(|e| anyhow!("Failed to decode hex payment hash: {e}"))?,
             payment_secret: parsed_invoice.payment_secret.clone(),
@@ -191,37 +184,8 @@ fn check_lsp_hints(
             incoming_amount_msat: req.amount_msat as i64,
             outgoing_amount_msat: ctx.destination_invoice_amount_msat as i64,
             opening_fee_params: ctx.channel_opening_fee_params.clone().map(Into::into),
-        });
-
-		/* TODO
-		let api_key = self.config.api_key.clone().unwrap_or_default();
-		let api_key_hash = sha256::Hash::hash(api_key.as_bytes()).to_hex();
-
-		self.lsp
-			.register_payment(
-				lsp_info.id.clone(),
-				lsp_info.lsp_pubkey.clone(),
-				PaymentInformation {
-					payment_hash: hex::decode(parsed_invoice.payment_hash.clone())
-						.map_err(|e| anyhow!("Failed to decode hex payment hash: {e}"))?,
-					payment_secret: parsed_invoice.payment_secret.clone(),
-					destination: hex::decode(parsed_invoice.payee_pubkey.clone())
-						.map_err(|e| anyhow!("Failed to decode hex payee pubkey: {e}"))?,
-					incoming_amount_msat: req.amount_msat as i64,
-					outgoing_amount_msat: destination_invoice_amount_msat as i64,
-					tag: json!({ "apiKeyHash": api_key_hash }).to_string(),
-					opening_fee_params: channel_opening_fee_params.clone().map(Into::into),
-				},
-			)
-			.await?;
-		info!("Payment registered");
-		*/
+        }))
+    } else {
+        Ok(None)
     }
-
-    let ctx = CheckedLspHintsContext {
-        checked_invoice: raw_invoice_with_hint,
-        payment_info,
-    };
-
-    todo!()
 }

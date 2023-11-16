@@ -339,7 +339,7 @@ fn lnurl_decode(encoded: &str) -> LnUrlResult<(String, String, bool)> {
             }
 
             Ok((domain.into(), decoded, false))
-        }
+        },
         Err(_) => {
             let supported_prefixes = ["lnurlp", "lnurlw", "keyauth"];
             let mut encoded = encoded.to_string();
@@ -372,7 +372,7 @@ fn lnurl_decode(encoded: &str) -> LnUrlResult<(String, String, bool)> {
             };
 
             Ok((domain.into(), encoded.replace(scheme, new_scheme), false))
-        }
+        },
     }
 }
 
@@ -707,7 +707,7 @@ pub(crate) mod tests {
                 assert_eq!(addr_with_amount_parsed.amount_sat, Some(2000));
                 assert_eq!(addr_with_amount_parsed.label, None);
                 assert_eq!(addr_with_amount_parsed.message, None);
-            }
+            },
             _ => return Err(anyhow!("Invalid type parsed")),
         }
 
@@ -723,7 +723,7 @@ pub(crate) mod tests {
                 assert_eq!(addr_with_amount_parsed.amount_sat, Some(2000));
                 assert_eq!(addr_with_amount_parsed.label, Some(label.into()));
                 assert_eq!(addr_with_amount_parsed.message, None);
-            }
+            },
             _ => return Err(anyhow!("Invalid type parsed")),
         }
 
@@ -739,7 +739,7 @@ pub(crate) mod tests {
                 assert_eq!(addr_with_amount_parsed.amount_sat, Some(2000));
                 assert_eq!(addr_with_amount_parsed.label, Some(label.into()));
                 assert_eq!(addr_with_amount_parsed.message, Some(message.into()));
-            }
+            },
             _ => return Err(anyhow!("Invalid type parsed")),
         }
 
@@ -821,7 +821,7 @@ pub(crate) mod tests {
         match parse(&public_key.to_string()).await? {
             NodeId { node_id } => {
                 assert_eq!(node_id, public_key.to_string());
-            }
+            },
             _ => return Err(anyhow!("Unexpected type")),
         }
 
@@ -955,7 +955,7 @@ pub(crate) mod tests {
             None => expected_lnurl_withdraw_data,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();
@@ -1099,7 +1099,7 @@ pub(crate) mod tests {
             None => expected_lnurl_pay_data,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();
@@ -1140,7 +1140,7 @@ pub(crate) mod tests {
             None => expected_lnurl_pay_data,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();

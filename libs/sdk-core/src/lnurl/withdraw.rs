@@ -96,7 +96,7 @@ mod tests {
             None => expected_payload,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();

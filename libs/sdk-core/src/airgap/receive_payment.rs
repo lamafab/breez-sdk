@@ -20,6 +20,7 @@ pub struct PreparedInvoiceContext {
 pub fn prepare_invoice(
     req: ReceivePaymentRequest,
     lsp_info: &LspInformation,
+    // TODO: This should take `Vec<Peer>`.
     node_peers: cln::ListpeersResponse,
     node_state_inbound_liquidity_msats: u64,
 ) -> Result<PreparedInvoiceContext, ReceivePaymentError> {

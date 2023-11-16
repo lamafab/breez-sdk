@@ -86,7 +86,7 @@ impl LspInformation {
                     if valid {
                         return Ok(fee);
                     }
-                }
+                },
                 Err(e) => return Err(anyhow!("Failed to calculate open channel fees: {e}")),
             }
         }

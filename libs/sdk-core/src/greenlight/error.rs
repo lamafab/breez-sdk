@@ -167,7 +167,7 @@ impl From<tonic::Status> for NodeError {
                 JsonRpcErrCode::PayInvoiceExpired => Self::InvoiceExpired(status.into()),
                 JsonRpcErrCode::PayTryOtherRoute | JsonRpcErrCode::PayRouteNotFound => {
                     Self::RouteNotFound(status.into())
-                }
+                },
                 JsonRpcErrCode::PayRouteTooExpensive => Self::RouteTooExpensive(status.into()),
                 JsonRpcErrCode::PayStoppedRetrying => Self::PaymentTimeout(status.into()),
                 JsonRpcErrCode::PayRhashAlreadyUsed
@@ -180,13 +180,13 @@ impl From<tonic::Status> for NodeError {
                 | JsonRpcErrCode::PayInvoicePreapprovalDeclined
                 | JsonRpcErrCode::PayKeysendPreapprovalDeclined => {
                     Self::PaymentFailed(status.into())
-                }
+                },
                 // Invoice errors
                 JsonRpcErrCode::InvoiceExpiredDuringWait => Self::InvoiceExpired(status.into()),
                 JsonRpcErrCode::InvoiceNoDescription => Self::InvoiceNoDescription(status.into()),
                 JsonRpcErrCode::InvoicePreimageAlreadyExists => {
                     Self::InvoicePreimageAlreadyExists(status.into())
-                }
+                },
                 _ => Self::Generic(status.into()),
             },
             _ => Self::Generic(status.into()),

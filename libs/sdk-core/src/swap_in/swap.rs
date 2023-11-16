@@ -106,7 +106,7 @@ impl BTCReceiveSwap {
             BreezEvent::NewBlock { block: tip } => {
                 debug!("got chain event {:?}", e);
                 _ = self.execute_pending_swaps(tip).await;
-            }
+            },
 
             // When invoice is paid we lookup for a swap that matches the same hash.
             // In case we find one, we update its paid amount.
@@ -125,8 +125,8 @@ impl BTCReceiveSwap {
                         )?;
                     }
                 }
-            }
-            _ => {} // skip events were are not interested in
+            },
+            _ => {}, // skip events were are not interested in
         }
 
         Ok(())

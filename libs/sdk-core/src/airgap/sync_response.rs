@@ -171,7 +171,7 @@ pub fn pull_changed(
         max_receivable_msat: max_allowed_to_receive_msats,
         max_single_payment_amount_msat: MAX_PAYMENT_AMOUNT_MSAT,
         max_chan_reserve_msats: max_allowed_reserve_msats,
-        connected_peers: connected_peers,
+        connected_peers,
         inbound_liquidity_msats: max_receivable_single_channel,
     };
 

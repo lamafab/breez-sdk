@@ -67,7 +67,7 @@ pub fn connect(config: Config, seed: Vec<u8>) -> Result<()> {
 
                 *locked = Some(breez_services);
                 Ok(())
-            }
+            },
             Some(_) => Err(SdkError::Generic {
                 err: "Static node services already set, please call disconnect() first".into(),
             }),

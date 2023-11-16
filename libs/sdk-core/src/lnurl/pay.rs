@@ -116,7 +116,7 @@ fn validate_invoice(
             return Err(LnUrlError::Generic(anyhow!(
                 "Invoice is missing description hash"
             )))
-        }
+        },
         Some(received_hash) => {
             // The hash is calculated from the exact metadata string, as received from the LNURL endpoint
             let calculated_hash = sha256::Hash::hash(data.metadata_str.as_bytes());
@@ -125,7 +125,7 @@ fn validate_invoice(
                     "Invoice has an invalid description hash"
                 )));
             }
-        }
+        },
     }
 
     match invoice.amount_msat {
@@ -437,7 +437,7 @@ mod tests {
             None => expected_payload,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();
@@ -478,7 +478,7 @@ mod tests {
             None => expected_payload,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();
@@ -524,7 +524,7 @@ mod tests {
             None => expected_payload,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();
@@ -571,7 +571,7 @@ mod tests {
             None => expected_payload,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();
@@ -627,7 +627,7 @@ mod tests {
             None => expected_payload,
             Some(err_reason) => {
                 ["{\"status\": \"ERROR\", \"reason\": \"", &err_reason, "\"}"].join("")
-            }
+            },
         };
 
         let mut server = MOCK_HTTP_SERVER.lock().unwrap();
@@ -1146,7 +1146,7 @@ mod tests {
                 } else {
                     Err(anyhow!("Unexpected success action content"))
                 }
-            }
+            },
             LnUrlPayResult::EndpointSuccess {
                 data:
                     LnUrlPaySuccessData {

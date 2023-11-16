@@ -94,7 +94,7 @@ impl Transport {
                             err,
                             cloned.reconnect_interval);
                         break;
-                    }
+                    },
                 };
                 loop {
                     tokio::select! {
@@ -141,7 +141,7 @@ impl Transport {
                     &msg.payload, e
                 );
                 return;
-            }
+            },
         };
 
         if v.jsonrpc != JSONRPC_VERSION {
@@ -165,13 +165,13 @@ impl Transport {
                                     "LSPS0: Got invalid notification {:?} for id {}: {}",
                                     msg, id, e
                                 );
-                            }
+                            },
                             _ => {
                                 debug!("LSPS0: Notification listener dropped for id {}", id);
                                 let mut notification_handlers =
                                     self.notification_handlers.write().await;
                                 (*notification_handlers).remove(&id);
-                            }
+                            },
                         },
                     }
                 } else {
@@ -180,7 +180,7 @@ impl Transport {
                         method, params
                     );
                 }
-            }
+            },
             RpcServerMessageBody::Response { id, result } => {
                 let handler_id = get_request_handler_id(&id, msg.peer_id);
                 if let Some(tx) = (*self.response_handlers.lock().await).remove(&handler_id) {
@@ -199,7 +199,7 @@ impl Transport {
                         id, result
                     );
                 }
-            }
+            },
             RpcServerMessageBody::Error { id, error } => {
                 let handler_id = get_request_handler_id(&id, msg.peer_id);
                 if let Some(tx) = (*self.response_handlers.lock().await).remove(&handler_id) {
@@ -218,7 +218,7 @@ impl Transport {
                         id, error
                     );
                 }
-            }
+            },
         }
     }
 
@@ -514,7 +514,7 @@ mod tests {
                 assert_eq!(e.code, 1);
                 assert_eq!(e.message, String::from("error occurred"));
                 assert_eq!(e.data, Some(json!({})));
-            }
+            },
             _ => unreachable!(),
         };
         let _ = stop.send(());

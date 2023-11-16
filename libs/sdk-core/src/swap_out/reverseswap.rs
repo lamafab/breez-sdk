@@ -248,12 +248,12 @@ impl BTCSendSwap {
                 res.validate_hodl_invoice(req.amount_sat * 1000)?;
                 res.validate_redeem_script(response.lockup_address, self.config.network)?;
                 Ok(res)
-            }
+            },
             BoltzApiCreateReverseSwapResponse::BoltzApiError { error } => {
                 Err(ReverseSwapError::ServiceConnectivity(anyhow!(
                     "(Boltz) Failed to create reverse swap: {error}"
                 )))
-            }
+            },
         }
     }
 
@@ -267,7 +267,7 @@ impl BTCSendSwap {
 
                 // Expects the most up-to-date rev swap states to be in the cache DB, therefore the refresh above
                 self.execute_pending_reverse_swaps().await
-            }
+            },
             _ => Ok(()),
         }
     }
@@ -378,7 +378,7 @@ impl BTCSendSwap {
                 tx.input = signed_inputs;
 
                 Ok(tx)
-            }
+            },
             Some(addr_type) => Err(anyhow!("Unexpected lock address type: {addr_type:?}")),
             None => Err(anyhow!("Could not determine lock address type")),
         }
@@ -504,7 +504,7 @@ impl BTCSendSwap {
                         // We do this to avoid race conditions in the edge-case when a reverse swap status update
                         // is triggered after creation succeeds, but before the payment is persisted in the DB
                         Some(Cancelled)
-                    }
+                    },
                     _ => None,
                 },
             },
@@ -515,10 +515,10 @@ impl BTCSendSwap {
                         true => {
                             warn!("Reverse swap {} crossed the timeout block height", rsi.id);
                             Some(Cancelled)
-                        }
+                        },
                         false => None,
                     }
-                }
+                },
                 TxStatus::Mempool => Some(CompletedSeen),
                 TxStatus::Confirmed => Some(CompletedConfirmed),
             },

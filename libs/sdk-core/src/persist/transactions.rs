@@ -300,13 +300,13 @@ fn filter_to_where_clause(
                 match type_filter {
                     PaymentTypeFilter::Sent => {
                         type_filter_clause.insert(PaymentType::Sent);
-                    }
+                    },
                     PaymentTypeFilter::Received => {
                         type_filter_clause.insert(PaymentType::Received);
-                    }
+                    },
                     PaymentTypeFilter::ClosedChannel => {
                         type_filter_clause.insert(PaymentType::ClosedChannel);
-                    }
+                    },
                 }
             }
 

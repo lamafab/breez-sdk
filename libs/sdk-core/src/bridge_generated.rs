@@ -918,19 +918,19 @@ impl support::IntoDart for BreezEvent {
             Self::NewBlock { block } => vec![0.into_dart(), block.into_into_dart().into_dart()],
             Self::InvoicePaid { details } => {
                 vec![1.into_dart(), details.into_into_dart().into_dart()]
-            }
+            },
             Self::Synced => vec![2.into_dart()],
             Self::PaymentSucceed { details } => {
                 vec![3.into_dart(), details.into_into_dart().into_dart()]
-            }
+            },
             Self::PaymentFailed { details } => {
                 vec![4.into_dart(), details.into_into_dart().into_dart()]
-            }
+            },
             Self::BackupStarted => vec![5.into_dart()],
             Self::BackupSucceeded => vec![6.into_dart()],
             Self::BackupFailed { details } => {
                 vec![7.into_dart(), details.into_into_dart().into_dart()]
-            }
+            },
         }
         .into_dart()
     }
@@ -1104,7 +1104,7 @@ impl support::IntoDart for InputType {
         match self {
             Self::BitcoinAddress { address } => {
                 vec![0.into_dart(), address.into_into_dart().into_dart()]
-            }
+            },
             Self::Bolt11 { invoice } => vec![1.into_dart(), invoice.into_into_dart().into_dart()],
             Self::NodeId { node_id } => vec![2.into_dart(), node_id.into_into_dart().into_dart()],
             Self::Url { url } => vec![3.into_dart(), url.into_into_dart().into_dart()],
@@ -1281,7 +1281,7 @@ impl support::IntoDart for LnUrlPayResult {
         match self {
             Self::EndpointSuccess { data } => {
                 vec![0.into_dart(), data.into_into_dart().into_dart()]
-            }
+            },
             Self::EndpointError { data } => vec![1.into_dart(), data.into_into_dart().into_dart()],
             Self::PayError { data } => vec![2.into_dart(), data.into_into_dart().into_dart()],
         }

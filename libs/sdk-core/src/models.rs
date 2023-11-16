@@ -251,7 +251,7 @@ impl FullReverseSwapInfo {
                     true => Ok(()),
                     false => Err(ReverseSwapError::UnexpectedLockupAddress),
                 }
-            }
+            },
             false => Err(ReverseSwapError::UnexpectedRedeemScript),
         }
     }
@@ -280,7 +280,7 @@ impl FullReverseSwapInfo {
                     ))),
                     true => Ok(()),
                 }
-            }
+            },
         }
     }
 
@@ -979,7 +979,7 @@ impl OpeningFeeParamsMenu {
             Err(_) => {
                 warn!("Failed to parse valid_until for OpeningFeeParams: {ofp:?}");
                 false
-            }
+            },
         });
         ensure!(!is_expired, "Validation failed: expired fee params found");
 
@@ -1004,7 +1004,7 @@ impl OpeningFeeParamsMenu {
                 Err(_) => {
                     warn!("Failed to parse valid_until for OpeningFeeParams: {ofp:?}");
                     false
-                }
+                },
             })
             .cloned()
             .collect();

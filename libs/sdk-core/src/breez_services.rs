@@ -288,7 +288,7 @@ impl BreezServices {
                     )
                     .await?;
                 Ok(SendPaymentResponse { payment })
-            }
+            },
         }
     }
 
@@ -328,7 +328,7 @@ impl BreezServices {
         {
             ValidatedCallbackResponse::EndpointError { data: e } => {
                 Ok(LnUrlPayResult::EndpointError { data: e })
-            }
+            },
             ValidatedCallbackResponse::EndpointSuccess { data: cb } => {
                 let pay_req = SendPaymentRequest {
                     bolt11: cb.pr.clone(),
@@ -349,7 +349,7 @@ impl BreezServices {
                                     reason: e.to_string(),
                                 },
                             });
-                        }
+                        },
                     },
                 }?
                 .payment;
@@ -358,7 +358,7 @@ impl BreezServices {
                         return Err(LnUrlPayError::Generic {
                             err: "Payment lookup found unexpected payment type".into(),
                         });
-                    }
+                    },
                     PaymentDetails::Ln { data } => data,
                 };
 
@@ -376,14 +376,14 @@ impl BreezServices {
                                     },
                                 )?;
                                 SuccessActionProcessed::Aes { data: decrypted }
-                            }
+                            },
                             SuccessAction::Message(data) => {
                                 SuccessActionProcessed::Message { data }
-                            }
+                            },
                             SuccessAction::Url(data) => SuccessActionProcessed::Url { data },
                         };
                         Some(processed_sa)
-                    }
+                    },
                     None => None,
                 };
 
@@ -403,7 +403,7 @@ impl BreezServices {
                         success_action: maybe_sa_processed,
                     },
                 })
-            }
+            },
         }
     }
 
@@ -574,7 +574,7 @@ impl BreezServices {
                 self.persister.set_lsp_id(lsp_id)?;
                 self.sync().await?;
                 Ok(())
-            }
+            },
             false => Err(SdkError::Generic {
                 err: format!("Unknown LSP: {lsp_id}"),
             }),
@@ -958,7 +958,7 @@ impl BreezServices {
                     self.notify_event_listeners(BreezEvent::PaymentSucceed { details: p.clone() })
                         .await?;
                     Ok(p)
-                }
+                },
                 None => Err(SendPaymentError::Generic {
                     err: "Payment not found".into(),
                 }),
@@ -983,7 +983,7 @@ impl BreezServices {
                 })
                 .await?;
                 Err(e)
-            }
+            },
         }
     }
 
@@ -1085,13 +1085,13 @@ impl BreezServices {
         match sync_breez_services.persister.get_node_state()? {
             Some(node) => {
                 info!("Starting existing node {}", node.id)
-            }
+            },
             None => {
                 // In case it is a first run we sync in foreground to get the node state.
                 info!("First run, syncing in foreground");
                 sync_breez_services.sync().await?;
                 info!("First run, finished running syncing in foreground");
-            }
+            },
         }
 
         // start backup watcher
@@ -1398,7 +1398,7 @@ impl BreezServices {
                     .await?;
 
                 Ok(outspends.get(outnum as usize).cloned())
-            }
+            },
         }
     }
 
@@ -1437,7 +1437,7 @@ impl BreezServices {
                     None => {
                         warn!("Blocktime could not be determined for from closing outspend, defaulting closed_at to epoch time");
                         SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()
-                    }
+                    },
                     Some(block_time) => block_time,
                 };
 
@@ -1448,7 +1448,7 @@ impl BreezServices {
                 self.persister.insert_or_update_channel(updated_channel)?;
 
                 (processed_closed_at as i64, maybe_closing_txid)
-            }
+            },
         };
 
         Ok(Payment {

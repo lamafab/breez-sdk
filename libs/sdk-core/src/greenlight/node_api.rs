@@ -121,12 +121,12 @@ impl Greenlight {
                         // The other two scenarios (recover, register) already include a network call.
                         gl_node.start().await?;
                         Ok(gl_node)
-                    }
+                    },
                     None => {
                         return Err(anyhow!("Failed to encrypt credentials"));
-                    }
+                    },
                 }
-            }
+            },
             Err(_) => Err(anyhow!("Failed to get gl credentials")),
         };
         res
@@ -191,7 +191,7 @@ impl Greenlight {
             Some(creds) => {
                 debug!("registering with credentials");
                 TlsConfig::new()?.identity(creds.device_cert, creds.device_key)
-            }
+            },
             None => TlsConfig::new()?,
         };
 
@@ -496,7 +496,7 @@ impl Greenlight {
                     return Err(NodeError::RouteNotFound(anyhow!(
                         "No payee node id or last hop hints provided, cannot calculate max amount"
                     )));
-                }
+                },
             },
         };
 
@@ -1115,7 +1115,7 @@ impl NodeAPI for Greenlight {
                                 .txid
                                 .ok_or(anyhow!("Empty txid in close response"))?,
                         ));
-                    }
+                    },
                     Err(e) => Err(anyhow!("Empty closing channel: {e}"))?,
                 };
             }
@@ -1167,7 +1167,7 @@ impl NodeAPI for Greenlight {
                     .await?
                     .into_inner();
                 Ok(format!("{resp:?}"))
-            }
+            },
             NodeCommand::ListPeerChannels => {
                 let resp = self
                     .get_node_client()
@@ -1176,7 +1176,7 @@ impl NodeAPI for Greenlight {
                     .await?
                     .into_inner();
                 Ok(format!("{resp:?}"))
-            }
+            },
             NodeCommand::ListFunds => {
                 let resp = self
                     .get_node_client()
@@ -1185,7 +1185,7 @@ impl NodeAPI for Greenlight {
                     .await?
                     .into_inner();
                 Ok(format!("{resp:?}"))
-            }
+            },
             NodeCommand::ListPayments => {
                 let resp = self
                     .get_node_client()
@@ -1194,7 +1194,7 @@ impl NodeAPI for Greenlight {
                     .await?
                     .into_inner();
                 Ok(format!("{resp:?}"))
-            }
+            },
             NodeCommand::ListInvoices => {
                 let resp = self
                     .get_node_client()
@@ -1203,7 +1203,7 @@ impl NodeAPI for Greenlight {
                     .await?
                     .into_inner();
                 Ok(format!("{resp:?}"))
-            }
+            },
             NodeCommand::CloseAllChannels => {
                 let peers_res = self
                     .get_node_client()
@@ -1216,7 +1216,7 @@ impl NodeAPI for Greenlight {
                 }
 
                 Ok("All channels were closed".to_string())
-            }
+            },
             NodeCommand::GetInfo => {
                 let resp = self
                     .get_node_client()
@@ -1709,7 +1709,7 @@ impl From<cln::ListpeersPeersChannels> for Channel {
         let state = match c.state() {
             Openingd | ChanneldAwaitingLockin | DualopendOpenInit | DualopendAwaitingLockin => {
                 ChannelState::PendingOpen
-            }
+            },
             ChanneldNormal => ChannelState::Opened,
             Onchain => ChannelState::Closed,
             _ => ChannelState::PendingClose,

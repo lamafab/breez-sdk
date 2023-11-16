@@ -525,13 +525,13 @@ impl MockNodeAPI {
                 // If payment is not already known, add it to the list and return it
                 cloud_payments.push(gl_payment.clone());
                 gl_payment
-            }
+            },
             Some(p) => {
                 // If a payment already exists (by ID), then do not replace it and return it
                 // The existing version is returned, because that's initialized with the preimage
                 // on mock breez service init
                 p.clone()
-            }
+            },
         };
 
         gl_payment.try_into()

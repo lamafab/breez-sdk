@@ -251,7 +251,7 @@ impl BackupWorker {
             Ok(_) => {
                 info!("backup sync completed successfully");
                 self.notify(BreezEvent::BackupSucceeded).await
-            }
+            },
             Err(e) => {
                 error!("backup sync failed {}", e);
                 self.notify(BreezEvent::BackupFailed {
@@ -260,7 +260,7 @@ impl BackupWorker {
                     },
                 })
                 .await
-            }
+            },
         };
         fs::remove_dir_all(Path::new(sync_dir.as_str()))?;
 
@@ -269,7 +269,7 @@ impl BackupWorker {
             Err(e) => {
                 error!("failed to notify backup event {}", e);
                 Err(e)
-            }
+            },
         }
     }
 
@@ -305,13 +305,13 @@ impl BackupWorker {
             Ok((new_version, data)) => {
                 info!("Optimistic sync succeeded, new version = {new_version}");
                 Ok((new_version, data))
-            }
+            },
             Err(e) => {
                 info!("Optimistic sync failed, trying to sync remote changes {e}");
                 // We need to sync remote changes and then retry the push
                 self.sync_remote_and_push(sync_dir, data, &mut last_sync_request_id)
                     .await
-            }
+            },
         };
 
         // In case we succeeded to push the local changes, we need to:
@@ -328,11 +328,11 @@ impl BackupWorker {
                     .set_last_backup_time(now.duration_since(UNIX_EPOCH).unwrap().as_secs())?;
                 info!("Sync succeeded");
                 Ok(())
-            }
+            },
             Err(e) => {
                 error!("Sync failed: {}", e);
                 Err(e)
-            }
+            },
         }
     }
 
@@ -375,13 +375,13 @@ impl BackupWorker {
                 // Push the local changes again
                 let result = self.push(Some(state.generation), hex).await?;
                 Ok(result)
-            }
+            },
 
             // In case there is no remote state, we can just push the local changes
             None => {
                 debug!("No remote state, pushing local changes");
                 self.push(None, local_data).await
-            }
+            },
         }
     }
 
@@ -405,9 +405,9 @@ impl BackupWorker {
                     Err(e) => {
                         error!("Failed to decompress backup: {e}");
                         Ok(None)
-                    }
+                    },
                 }
-            }
+            },
             None => Ok(None),
         }
     }
@@ -435,7 +435,7 @@ impl BackupWorker {
                     fs::create_dir_all(sync_path)?;
                 }
                 Ok(sync_path)
-            }
+            },
             None => Err(anyhow!("Failed to create sync directory")),
         }?;
         Ok(path_str.into())

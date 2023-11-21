@@ -1998,7 +1998,7 @@ impl Receiver for PaymentReceiver {
 
             info!("Adding LSP hop as routing hint: {:?}", lsp_hop);
             lsp_hint = Some(RouteHint {
-                hops: vec![lsp_hop],
+                hops: vec![lsp_hop]
             });
         }
 

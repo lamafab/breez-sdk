@@ -10,6 +10,8 @@ use lightning_invoice::RawInvoice;
 pub const INVOICE_PAYMENT_FEE_EXPIRY_SECONDS: u32 = 60 * 60; // 60 minutes
 
 pub struct PreparedInvoiceContext {
+    pub lsp_id: String,
+    pub lsp_pubkey: String,
     pub short_channel_id: u64,
     pub destination_invoice_amount_msat: u64,
     pub channel_opening_fee_params: Option<OpeningFeeParams>,
@@ -19,7 +21,7 @@ pub struct PreparedInvoiceContext {
 
 pub fn prepare_invoice(
     req: ReceivePaymentRequest,
-    lsp_info: &LspInformation,
+    lsp_info: LspInformation,
     // TODO: This should take `Vec<Peer>`.
     node_peers: cln::ListpeersResponse,
     node_state_inbound_liquidity_msats: u64,
@@ -92,6 +94,8 @@ pub fn prepare_invoice(
     }
 
     Ok(PreparedInvoiceContext {
+        lsp_id: lsp_info.id,
+        lsp_pubkey: lsp_info.pubkey,
         short_channel_id,
         destination_invoice_amount_msat,
         channel_opening_fee_params,
@@ -160,11 +164,11 @@ pub fn check_lsp_hints(
 }
 
 pub fn check_payment_registration(
-    invoice: String,
+    invoice: &str,
     req: &ReceivePaymentRequest,
     ctx: &PreparedInvoiceContext,
 ) -> Result<Option<PaymentInfo>, ReceivePaymentError> {
-    let parsed_invoice = parse_invoice(&invoice)?;
+    let parsed_invoice = parse_invoice(invoice)?;
 
     // register the payment at the lsp if needed
     if ctx.open_channel_needed {

@@ -155,6 +155,7 @@ pub fn check_lsp_hints(
         // create the large amount invoice
         Ok(Some(add_lsp_routing_hints(
             invoice.clone(),
+            !ctx.open_channel_needed,
             lsp_hint,
             req.amount_msat,
         )?))

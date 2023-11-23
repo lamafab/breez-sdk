@@ -14,7 +14,7 @@ pub struct RegistrationRequest {
 }
 
 impl RegistrationRequest {
-	pub fn into_pb_scheduler_request(
+	pub fn into_pb_registration_request(
 		self,
 		node_id: Vec<u8>,
 		network: Network,
@@ -33,13 +33,28 @@ impl RegistrationRequest {
 			startupmsgs:self.startup_msgs 
 		}
 	}
+	pub fn into_pb_recovery_request(
+		self,
+		node_id: Vec<u8>,
+	) -> gl_client::pb::scheduler::RecoveryRequest {
+		gl_client::pb::scheduler::RecoveryRequest {
+			node_id,
+			challenge: self.challenge,
+			signature: self.signature,
+			csr: self.device_csr.into_bytes(),
+		}
+	}
 }
 
 /// Signs the [`ChallengeResponse`](gl_client::pb::scheduler::ChallengeResponse)
 /// returned by the Greenlight RPC. The return value should then be converted
-/// into a [`RegistrationRequest`](gl_client::pb::scheduler::RegistrationRequest)
-pub fn sign_registration_challenge_response(
+/// into a
+/// [`RegistrationRequest`](gl_client::pb::scheduler::RegistrationRequest) or
+/// [`RecoveryRequest`](gl_client::pb::scheduler::RecoveryRequest), depending on
+/// intended usecase.
+pub fn sign_challenge_response(
 	signer: Signer,
+	is_recovery: bool,
 	challenge: Vec<u8>,
 	node_id: &[u8],
 ) -> RegistrationRequest {
@@ -49,9 +64,15 @@ pub fn sign_registration_challenge_response(
 
 	let signature = signer.sign_challenge(challenge.clone()).unwrap();
 
+	let name = if is_recovery {
+		format!("recovered-{}", hex::encode(&challenge))
+	} else {
+		"default".to_string()
+	};
+
 	let device_cert = tls::generate_self_signed_device_cert(
 		&hex::encode(node_id),
-		"default".into(),
+		&name,
 		vec!["localhost".into()],
 	);
 	let device_csr = device_cert.serialize_request_pem().unwrap();

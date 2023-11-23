@@ -51,7 +51,7 @@ impl RegistrationRequest {
 /// into a
 /// [`RegistrationRequest`](gl_client::pb::scheduler::RegistrationRequest) or
 /// [`RecoveryRequest`](gl_client::pb::scheduler::RecoveryRequest), depending on
-/// intended usecase.
+/// context.
 pub fn sign_challenge_response(
 	signer: Signer,
 	is_recovery: bool,
